@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user role and profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["citizen", "cleaner", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "WasteReport": {
+      "title": "Waste Report",
+      "description": "A report of waste submitted by a citizen.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["Plastic", "Organic", "Metal", "Paper", "Hazardous"] },
+        "priority": { "type": "number" },
+        "location": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["Pending", "Assigned", "Completed"] },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "rewardPoints": { "type": "number" },
+        "reporterUid": { "type": "string" },
+        "processingMethod": { "type": "string" },
+        "impactMessage": { "type": "string" }
+      },
+      "required": ["id", "type", "priority", "location", "status", "reporterUid"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile data."
+    },
+    "/reports/{reportId}": {
+      "schema": "WasteReport",
+      "description": "Waste reports submitted by users."
+    }
+  }
+}

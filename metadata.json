@@ -1,0 +1,5 @@
+{
+  "name": "SafaiSetu Intelligent Management System",
+  "description": "A Smart City Waste Management dashboard integrating AI paradigms like Classification, Informed Search, CSP, and Probabilistic Models.",
+  "requestFramePermissions": ["geolocation"]
+}

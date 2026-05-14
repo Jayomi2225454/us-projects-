@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (Firebase Auth UID)
+    // Fields:
+    //   - uid: string (required) - Firebase Auth UID
+    //   - email: string (required) - User email
+    //   - displayName: string (optional) - User display name
+    //   - role: string (required) - One of ['citizen', 'cleaner', 'admin']
+    //   - createdAt: timestamp (required) - Creation time
+    //
+    // Collection: reports
+    // Document ID: {reportId}
+    // Fields:
+    //   - id: string (required)
+    //   - type: string (required) - Waste type
+    //   - priority: number (required) - 1-10
+    //   - location: string (required)
+    //   - latitude: number (optional)
+    //   - longitude: number (optional)
+    //   - timestamp: timestamp (required)
+    //   - status: string (required) - ['Pending', 'Assigned', 'Completed']
+    //   - reporterUid: string (required) - UID of the citizen who reported
+    //   - imageUrl: string (optional)
+    //   - rewardPoints: number (optional)
+    //   - processingMethod: string (optional)
+    //   - impactMessage: string (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('admin') || 
+             (request.auth.token.email == "prishamisha112006@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.role in ['citizen', 'cleaner', 'admin'] &&
+             data.email is string &&
+             data.email.size() < 255;
+    }
+
+    function isValidReport(data) {
+      return data.keys().hasAll(['id', 'type', 'priority', 'location', 'status', 'reporterUid', 'timestamp']) &&
+             data.type in ['Plastic', 'Organic', 'Metal', 'Paper', 'Hazardous'] &&
+             data.status in ['Pending', 'Assigned', 'Completed'] &&
+             data.priority is number && data.priority >= 1 && data.priority <= 10 &&
+             data.location is string && data.location.size() < 500 &&
+             data.reporterUid == request.auth.uid &&
+             (!('processingMethod' in data) || data.processingMethod is string) &&
+             (!('impactMessage' in data) || data.impactMessage is string);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role;
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAuthenticated();
+      allow create: if hasRole('citizen') && isValidReport(request.resource.data);
+      allow update: if (hasRole('cleaner') || hasRole('admin')) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow delete: if isAdmin();
+    }
+  }
+}
